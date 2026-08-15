@@ -135,6 +135,24 @@ button{border:none;background:none;cursor:pointer}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 @media(min-width:540px){.grid{grid-template-columns:repeat(3,1fr)}}
 @media(min-width:780px){.grid{grid-template-columns:repeat(4,1fr)}}
+
+/* ---------- lista de territórios ---------- */
+.tlist{display:grid;grid-template-columns:1fr;gap:8px}
+@media(min-width:620px){.tlist{grid-template-columns:1fr 1fr}}
+.trow{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r2);padding:12px 14px;text-align:left;width:100%;box-shadow:var(--sh);transition:transform .12s ease}
+.trow:active{transform:scale(.985)}
+.trow .num{width:44px;height:44px;border-radius:13px;flex:none;display:grid;place-items:center;
+  font-size:17px;font-weight:800;background:var(--surface2);color:var(--muted);border:1px solid var(--line)}
+.trow[data-st="wip"] .num{background:var(--amber-soft);color:var(--amber);border-color:transparent}
+.trow[data-st="done"] .num{background:var(--acc);color:var(--acc-t);border-color:transparent}
+.trow .bd{flex:1;min-width:0}
+.trow .bd .nm{font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow .bd .sub{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow .tag{font-size:10.5px;font-weight:800;padding:5px 9px;border-radius:99px;flex:none;
+  background:var(--surface2);color:var(--muted)}
+.trow[data-st="wip"] .tag{background:var(--amber-soft);color:var(--amber)}
+.trow[data-st="done"] .tag{background:var(--acc-soft);color:var(--acc)}
 .card{
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden;
   text-align:left;width:100%;display:block;box-shadow:var(--sh);
@@ -233,8 +251,29 @@ button{border:none;background:none;cursor:pointer}
 @media print{
   .tabbar,.progtop,.cover .prog,.cover .rule,.cover .topline .iconbtn{display:none!important}
   body{padding-bottom:0}
-  .day{break-inside:avoid;box-shadow:none}
+  .day,.saida{break-inside:avoid;box-shadow:none}
 }
+
+/* ---------- pontos de saída ---------- */
+.saida{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);box-shadow:var(--sh);margin-bottom:10px;overflow:hidden}
+.saida .sh{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.saida .sh .pin{width:38px;height:38px;border-radius:12px;flex:none;display:grid;place-items:center;background:var(--acc-soft)}
+.saida .sh .pin svg{width:19px;height:19px;stroke:var(--acc);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.saida .sh .tx{flex:1;min-width:0}
+.saida .sh .tx b{display:block;font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.saida .sh .tx small{display:block;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.saida .sg{padding:11px 14px 13px}
+.saida .sg .lbl{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.tchips{display:flex;flex-wrap:wrap;gap:6px}
+.tchip{font-size:12px;font-weight:700;padding:6px 11px;border-radius:99px;border:1px solid var(--line);background:var(--surface2);color:var(--text)}
+.tchip[data-st="wip"]{background:var(--amber-soft);border-color:transparent;color:var(--amber)}
+.tchip[data-st="done"]{background:var(--acc-soft);border-color:transparent;color:var(--acc);text-decoration:line-through}
+.saida .sf{display:flex;gap:8px;padding:0 14px 13px}
+.pickgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:6px;max-height:250px;overflow-y:auto;
+  padding:4px;border:1px solid var(--line);border-radius:var(--r3);background:var(--surface2)}
+.pick{padding:9px 2px;border-radius:8px;font-size:13px;font-weight:700;background:var(--surface);border:1px solid var(--line);text-align:center}
+.pick[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--acc-t)}
+.pick .s{display:block;font-size:9px;font-weight:600;opacity:.7}
 
 /* ---------- navegação inferior ---------- */
 .tabbar{
@@ -439,6 +478,17 @@ textarea{resize:vertical;min-height:62px}
   </div>
 </section>
 
+<!-- ---------- página: pontos de saída ---------- -->
+<section class="page" id="pgSaidas">
+  <div class="wrap">
+    <div class="progtop">
+      <button class="add" id="btnNewSaida"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo ponto de saída</button>
+    </div>
+    <p class="note" style="text-align:left;margin:0 0 12px">Cada ponto de saída guarda o local e os territórios que ficam por perto, para sugerir na hora de programar.</p>
+    <div id="saidaList"></div>
+  </div>
+</section>
+
 <!-- ---------- página: resumo ---------- -->
 <section class="page" id="pgSum">
   <div class="wrap">
@@ -489,6 +539,10 @@ textarea{resize:vertical;min-height:62px}
   <button data-p="pgProg" aria-selected="false">
     <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 11h18M8 15h3"/></svg>
     <span>Campo</span>
+  </button>
+  <button data-p="pgSaidas" aria-selected="false">
+    <svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.6"/></svg>
+    <span>Saídas</span>
   </button>
   <button data-p="pgSum" aria-selected="false">
     <svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
@@ -665,6 +719,26 @@ textarea{resize:vertical;min-height:62px}
   </div>
 </div>
 
+<div class="modal" id="smodal" aria-hidden="true">
+  <div class="box">
+    <div class="grip"></div>
+    <h3 style="font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 13px" id="sTitle">Novo ponto de saída</h3>
+    <div class="fields">
+      <label class="f full"><span>Nome do ponto</span><input type="text" id="sNome" placeholder="Ex.: Praça Central"></label>
+      <label class="f full"><span>Endereço</span><input type="text" id="sEnd" placeholder="Rua, número ou referência"></label>
+      <label class="f"><span>Data (opcional)</span><input type="date" id="sData"></label>
+      <label class="f"><span>Horário (opcional)</span><input type="time" id="sHora" step="300"></label>
+      <label class="f full"><span>Territórios por perto <span id="sCont" style="float:right;font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted)"></span></span>
+        <div class="pickgrid" id="sPick"></div>
+      </label>
+    </div>
+    <div class="acts" style="justify-content:space-between">
+      <button class="btn danger" id="sDel">Excluir</button>
+      <span style="display:flex;gap:8px"><button class="btn" id="sCancel">Cancelar</button><button class="btn primary" id="sSave">Salvar</button></span>
+    </div>
+  </div>
+</div>
+
 <datalist id="places"></datalist>
 
 <div class="modal" id="askmodal" aria-hidden="true">
@@ -688,6 +762,8 @@ let KEYS = [];
 const today = () => new Date().toISOString().slice(0,10);
 const initials = n => n.trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
 const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const br = d => d? d.split('-').reverse().join('/') : '—';
+const rotulo = {new:'A iniciar',wip:'Em andamento',done:'Concluído'};
 let qidc=0;
 function qid(){ qidc++; return 'q'+Date.now().toString(36)+qidc+Math.random().toString(36).slice(2,5); }
 
@@ -760,7 +836,7 @@ let SY={url:'',g:'',since:0}, syncing=false, syncT=null, lastOk=0;
 try{ const c=localStorage.getItem(SCFG); if(c) SY=Object.assign(SY,JSON.parse(c)); }catch(e){}
 function saveCfg(){ try{ localStorage.setItem(SCFG,JSON.stringify(SY)); }catch(e){} }
 function blankT(){ return {name:'',resp:'',assign:'',start:'',end:'',stop:'',notes:'',started:false,tipo:'urbano',distrito:'',refs:'',quadras:[],ts:0}; }
-function seed(n){ const t={}; for(let i=1;i<=n;i++) t[String(i)]=blankT(); return {v:3,t,p:{items:[],ts:0},cfg:{congName:'',city:'',total:n}}; }
+function seed(n){ const t={}; for(let i=1;i<=n;i++) t[String(i)]=blankT(); return {v:3,t,p:{items:[],ts:0},s:{items:[],ts:0},cfg:{congName:'',city:'',total:n}}; }
 function rebuildKeys(){
   const n=Math.max(1,(DB.cfg&&DB.cfg.total)||1);
   KEYS=Array.from({length:n},(_,i)=>String(i+1));
@@ -783,6 +859,7 @@ function gLabel(k){
   if(t.tipo==='distrito') return (t.distrito||'').trim() || 'Distrito';
   return 'Urbano';
 }
+function nomeDe(k){ return (DB.t[k]&&DB.t[k].name) || ('Território '+k); }
 function groupLabels(){
   const order=['Urbano','Rural'];
   const distritos=[...new Set(KEYS.filter(k=>DB.t[k].tipo==='distrito').map(k=>gLabel(k)))].sort((a,b)=>a.localeCompare(b,'pt'));
@@ -858,14 +935,16 @@ function renderBoard(){
     const h=document.createElement('div'); h.className='gsep';
     h.innerHTML=`<h2>${esc(label)}</h2><div class="l"></div><div class="c">${ks.length}</div>`;
     board.appendChild(h);
-    const gr=document.createElement('div'); gr.className='grid';
+    const gr=document.createElement('div'); gr.className='tlist';
     ks.forEach(k=>{
-      const p=prog(k);
-      const b=document.createElement('button'); b.className='card'; b.dataset.st=status(k);
-      b.innerHTML = thumbHtml(k)+`<div class="cap"><div class="n">${k}</div><div class="m">
-        <div class="nm">${DB.t[k].name?esc(DB.t[k].name):'Território '+k}</div>
-        <div class="qt">${p.done}/${p.total} quadras</div></div><div class="p">${p.pct}%</div></div>
-        ${DB.t[k].resp?`<div class="resp"><span class="av">${esc(initials(DB.t[k].resp))}</span>${esc(DB.t[k].resp)}</div>`:''}`;
+      const t=DB.t[k], st=status(k);
+      const sub = st==='done'? 'Concluído em '+br(t.end)
+                : st==='wip'? 'Iniciado em '+br(t.start)+(t.resp?' · '+esc(t.resp):'')
+                : (t.resp? 'Designado a '+esc(t.resp) : 'Sem responsável');
+      const b=document.createElement('button'); b.className='trow'; b.dataset.st=st;
+      b.innerHTML=`<span class="num">${k}</span>
+        <span class="bd"><span class="nm">${esc(nomeDe(k))}</span><span class="sub">${sub}</span></span>
+        <span class="tag">${rotulo[st]}</span>`;
       b.addEventListener('click',()=>openT(k));
       gr.appendChild(b);
     });
@@ -1129,18 +1208,19 @@ filters.addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(!b)r
   [...filters.children].forEach(c=>c.setAttribute('aria-pressed',String(c===b))); renderBoard(); });
 document.getElementById('q').addEventListener('input',e=>{ term=e.target.value.trim().toLowerCase(); renderBoard(); });
 
-const TITLES={pgList:['Nosso Território',''],pgMap:['Mapa Geral',''],pgProg:['Programação',''],pgSum:['Resumo','']};
-tabs.addEventListener('click',e=>{
-  const b=e.target.closest('button'); if(!b)return;
-  [...tabs.children].forEach(x=>x.setAttribute('aria-selected',String(x===b)));
-  ['pgList','pgMap','pgProg','pgSum'].forEach(p=>document.getElementById(p).classList.toggle('on',p===b.dataset.p));
-  coverTitle.childNodes[0].nodeValue=TITLES[b.dataset.p][0]; coverSub.textContent=TITLES[b.dataset.p][1]; coverSub.style.display=TITLES[b.dataset.p][1]?'block':'none';
-  if(b.dataset.p==='pgMap') renderMapIndex();
-  document.querySelector('.cover').classList.toggle('compact', b.dataset.p==='pgProg');
-  if(b.dataset.p==='pgProg') renderProg();
-  if(b.dataset.p==='pgSum') renderSummary();
+const TITLES={pgList:['Nosso Território',''],pgMap:['Mapa Geral',''],pgProg:['Programação',''],pgSaidas:['Saídas',''],pgSum:['Resumo','']};
+function irPara(p){
+  [...tabs.children].forEach(x=>x.setAttribute('aria-selected',String(x.dataset.p===p)));
+  Object.keys(TITLES).forEach(id=>document.getElementById(id).classList.toggle('on',id===p));
+  coverTitle.childNodes[0].nodeValue=TITLES[p][0]; coverSub.textContent=TITLES[p][1]; coverSub.style.display=TITLES[p][1]?'block':'none';
+  if(p==='pgMap') renderMapIndex();
+  document.querySelector('.cover').classList.toggle('compact', p==='pgProg'||p==='pgSaidas');
+  if(p==='pgProg') renderProg();
+  if(p==='pgSaidas') renderSaidas();
+  if(p==='pgSum') renderSummary();
   scrollTo({top:0});
-});
+}
+tabs.addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) irPara(b.dataset.p); });
 
 /* ---------- ajustes de território ---------- */
 function totalQuadras(){ return KEYS.reduce((a,k)=>a+((DB.t[k].quadras||[]).length),0); }
@@ -1171,9 +1251,10 @@ fileIn.addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f)return; const r=new FileReader();
   r.onload=async ()=>{ try{ const d=JSON.parse(r.result); if(!d||!d.t) throw 0;
       if(!await ask('Restaurar este arquivo? As marcações atuais deste aparelho serão substituídas.','Restaurar')) return;
-      DB=merge(d); rebuildKeys(); Object.keys(DB.t).forEach(k=>{DB.t[k].ts=Date.now(); dirty.add(k);}); DB.p.ts=Date.now(); dirty.add('@prog');
+      DB=merge(d); rebuildKeys(); Object.keys(DB.t).forEach(k=>{DB.t[k].ts=Date.now(); dirty.add(k);});
+      DB.p.ts=Date.now(); dirty.add('@prog'); DB.s.ts=Date.now(); dirty.add('@saidas');
       persist(); schedule(); applyCongBranding();
-      renderProg(); renderSummary(); renderBoard(); renderMapIndex(); fillCfgForm(); renderAbout(); toast('Restaurado');
+      renderProg(); renderSaidas(); renderSummary(); renderBoard(); renderMapIndex(); fillCfgForm(); renderAbout(); toast('Restaurado');
     }catch(err){ toast('Arquivo não reconhecido'); } fileIn.value=''; };
   r.readAsText(f);
 });
@@ -1190,10 +1271,90 @@ function merge(d){
   const t={};
   if(d&&d.t) Object.keys(d.t).forEach(k=>{ t[k]=normT(d.t[k]); });
   const p = (d&&d.p&&Array.isArray(d.p.items))? {items:d.p.items,ts:d.p.ts||0} : {items:[],ts:0};
-  return {v:3,t,p,cfg};
+  const s = (d&&d.s&&Array.isArray(d.s.items))? {items:d.s.items,ts:d.s.ts||0} : {items:[],ts:0};
+  return {v:3,t,p,s,cfg};
 }
 function people(){ return [...new Set(KEYS.map(k=>(DB.t[k].resp||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt')); }
 function buildPeople(){ document.getElementById('people').innerHTML = people().map(p=>`<option value="${esc(p)}">`).join(''); }
+
+/* ---------- pontos de saída ---------- */
+function sitems(){ return (DB.s.items||[]).filter(i=>!i.del); }
+function touchSaidas(){ DB.s.ts=Date.now(); dirty.add('@saidas'); persist(); schedule(); }
+let editS=null, pickSel=new Set();
+function renderSaidas(){
+  const l=sitems().sort((a,b)=>(a.data||'9999').localeCompare(b.data||'9999')||(a.nome||'').localeCompare(b.nome||''));
+  if(!l.length){ saidaList.innerHTML='<div class="empty">Nenhum ponto de saída cadastrado.<br>Toque em “Novo ponto de saída”.</div>'; return; }
+  saidaList.innerHTML=l.map(s=>{
+    const ts=(s.terr||[]).filter(k=>DB.t[k]).sort((a,b)=>+a-+b);
+    const falta=ts.filter(k=>status(k)!=='done').length;
+    const quando=[s.data?br(s.data):'', s.hora||''].filter(Boolean).join(' às ');
+    return `<div class="saida">
+      <div class="sh">
+        <span class="pin"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.6"/></svg></span>
+        <span class="tx"><b>${esc(s.nome||'Sem nome')}</b><small>${esc(s.end||'sem endereço')}${quando?' · '+esc(quando):''}</small></span>
+      </div>
+      <div class="sg">
+        <div class="lbl">Territórios sugeridos ${ts.length? '· '+falta+' de '+ts.length+' por fazer':''}</div>
+        <div class="tchips">${ts.length? ts.map(k=>`<button class="tchip" data-k="${k}" data-st="${status(k)}">${k} · ${esc(nomeDe(k))}</button>`).join('')
+          : '<span style="font-size:12.5px;color:var(--muted)">Nenhum território escolhido ainda.</span>'}</div>
+      </div>
+      <div class="sf">
+        <button class="btn" data-ed="${s.id}">Editar</button>
+        <button class="btn" data-map="${s.id}">Abrir no Maps</button>
+        <button class="btn primary" data-prog="${s.id}">Programar</button>
+      </div></div>`;
+  }).join('');
+  saidaList.querySelectorAll('.tchip').forEach(b=>b.addEventListener('click',()=>openT(b.dataset.k)));
+  saidaList.querySelectorAll('[data-ed]').forEach(b=>b.addEventListener('click',()=>openSaida(b.dataset.ed)));
+  saidaList.querySelectorAll('[data-map]').forEach(b=>b.addEventListener('click',()=>{
+    const s=sitems().find(x=>x.id===b.dataset.map); if(s) abrirMaps(s.end||s.nome||''); }));
+  saidaList.querySelectorAll('[data-prog]').forEach(b=>b.addEventListener('click',()=>{
+    const s=sitems().find(x=>x.id===b.dataset.prog); if(!s) return;
+    irPara('pgProg'); openProg(null, s);
+  }));
+}
+function openSaida(id){
+  editS=id||null;
+  const s=id? sitems().find(x=>x.id===id):null;
+  sTitle.textContent=s?'Editar ponto de saída':'Novo ponto de saída';
+  sDel.style.display=s?'':'none';
+  sNome.value=s?(s.nome||''):''; sEnd.value=s?(s.end||''):'';
+  sData.value=s?(s.data||''):''; sHora.value=s?(s.hora||''):'';
+  pickSel=new Set(s?(s.terr||[]):[]);
+  renderPick();
+  smodal.classList.add('open'); smodal.setAttribute('aria-hidden','false');
+}
+function renderPick(){
+  sPick.innerHTML=KEYS.map(k=>{
+    const st=status(k);
+    return `<button class="pick" data-k="${k}" aria-pressed="${pickSel.has(k)}">${k}<span class="s">${st==='done'?'feito':st==='wip'?'em curso':'&nbsp;'}</span></button>`;
+  }).join('');
+  sPick.querySelectorAll('.pick').forEach(b=>b.addEventListener('click',()=>{
+    const k=b.dataset.k;
+    if(pickSel.has(k)) pickSel.delete(k); else pickSel.add(k);
+    b.setAttribute('aria-pressed',String(pickSel.has(k)));
+    sCont.textContent=pickSel.size? pickSel.size+' escolhidos':'';
+  }));
+  sCont.textContent=pickSel.size? pickSel.size+' escolhidos':'';
+}
+sCancel.addEventListener('click',()=>{ smodal.classList.remove('open'); smodal.setAttribute('aria-hidden','true'); editS=null; });
+smodal.addEventListener('click',e=>{ if(e.target===smodal){ smodal.classList.remove('open'); smodal.setAttribute('aria-hidden','true'); editS=null; } });
+sSave.addEventListener('click',()=>{
+  if(!sNome.value.trim()){ toast('Dê um nome ao ponto de saída'); return; }
+  const d={nome:sNome.value.trim(),end:sEnd.value.trim(),data:sData.value,hora:sHora.value,
+           terr:[...pickSel].sort((a,b)=>+a-+b),ts:Date.now()};
+  let idS=editS;
+  if(editS) Object.assign(DB.s.items.find(x=>x.id===editS),d);
+  else { idS='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    DB.s.items.push(Object.assign({id:idS},d)); }
+  touchSaidas(); renderSaidas(); smodal.classList.remove('open'); smodal.setAttribute('aria-hidden','true'); editS=null; toast('Ponto de saída salvo');
+});
+sDel.addEventListener('click',async ()=>{
+  if(!await ask('Excluir este ponto de saída?','Excluir')) return;
+  const it=DB.s.items.find(x=>x.id===editS); if(it){ it.del=true; it.ts=Date.now(); }
+  touchSaidas(); renderSaidas(); smodal.classList.remove('open'); smodal.setAttribute('aria-hidden','true'); editS=null;
+});
+btnNewSaida.addEventListener('click',()=>openSaida(null));
 
 /* ---------- localização / Google Maps ---------- */
 function refsOf(k){ return (DB.t[k].refs||'').split(',').map(s=>s.trim()).filter(Boolean); }
@@ -1276,18 +1437,18 @@ function renderProg(){
   }).join('');
   progList.querySelectorAll('.slot').forEach(b=>b.addEventListener('click',()=>openProg(b.dataset.id)));
 }
-function openProg(id){
+function openProg(id, saida){
   editP=id||null;
   const it = id? pitems().find(x=>x.id===id) : null;
   pTitle.textContent = it? 'Editar saída' : 'Nova saída de campo';
   pDel.style.display = it? '' : 'none';
-  pDate.value = it? it.date : today();
-  pTime.value = it? (it.time||'') : '09:00';
-  pPlace.value = it? (it.place||'') : (places()[0]||'');
+  pDate.value = it? it.date : (saida&&saida.data? saida.data : today());
+  pTime.value = it? (it.time||'') : (saida&&saida.hora? saida.hora : '09:00');
+  pPlace.value = it? (it.place||'') : (saida? (saida.nome||'') : (places()[0]||''));
   pDir.value = it? (it.dir||'') : '';
   pTerr.innerHTML = '<option value="">— sem território —</option>' +
     KEYS.map(k=>`<option value="${k}">${k}${DB.t[k].name?' · '+esc(DB.t[k].name):''}</option>`).join('');
-  pTerr.value = it? (it.terr||'') : '';
+  pTerr.value = it? (it.terr||'') : (saida&&saida.terr&&saida.terr.length===1? saida.terr[0] : '');
   buildPeople(); buildPlaces();
   pmodal.classList.add('open'); pmodal.setAttribute('aria-hidden','false');
 }
@@ -1354,8 +1515,9 @@ async function sync(silent){
   if(!SY.url||!SY.g){ if(!silent) toast('Configure o endereço e o código do grupo'); return; }
   if(syncing) return;
   syncing=true; syncStatus('sincronizando...',false);
-  const items=[...dirty].filter(k=>k!=='@prog').map(k=>({k,ts:DB.t[k].ts||Date.now(),d:DB.t[k]}));
+  const items=[...dirty].filter(k=>k!=='@prog'&&k!=='@saidas').map(k=>({k,ts:DB.t[k].ts||Date.now(),d:DB.t[k]}));
   if(dirty.has('@prog')) items.push({k:'@prog',ts:DB.p.ts||Date.now(),d:{items:DB.p.items||[]}});
+  if(dirty.has('@saidas')) items.push({k:'@saidas',ts:DB.s.ts||Date.now(),d:{items:DB.s.items||[]}});
   try{
     const r=await fetch(SY.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({a:'sync',g:SY.g,since:SY.since||0,items})});
@@ -1374,12 +1536,22 @@ async function sync(silent){
         if(mudou){ DB.p.items=Object.values(mapa); DB.p.ts=Date.now(); dirty.add('@prog'); changed++; }
         return;
       }
+      if(it.k==='@saidas'){
+        const mapa={}; (DB.s.items||[]).forEach(x=>mapa[x.id]=x);
+        let mudou=false;
+        ((it.d&&it.d.items)||[]).forEach(x=>{
+          const a=mapa[x.id];
+          if(!a || (x.ts||0) > (a.ts||0)){ mapa[x.id]=x; mudou=true; }
+        });
+        if(mudou){ DB.s.items=Object.values(mapa); DB.s.ts=Date.now(); dirty.add('@saidas'); changed++; }
+        return;
+      }
       if(!DB.t[it.k]) DB.t[it.k]=blankT();
       const loc=DB.t[it.k];
       if((it.ts||0) > (loc.ts||0)){ DB.t[it.k]=Object.assign(loc,normT(it.d),{ts:it.ts}); changed++; }
     });
     SY.since=j.now||Date.now(); saveCfg(); persist(); lastOk=Date.now();
-    if(changed){ renderBoard(); renderSummary(); buildPeople(); renderProg(); renderMapIndex(); if(cur){ renderGrid(); renderQ(); renderStart(); } }
+    if(changed){ renderBoard(); renderSummary(); buildPeople(); renderProg(); renderSaidas(); renderMapIndex(); if(cur){ renderGrid(); renderQ(); renderStart(); } }
     syncStatus('sincronizado',true);
     const info=document.getElementById('syncInfo');
     if(info) info.textContent='Última sincronização '+since(lastOk)+(changed?` · ${changed} atualização${changed>1?'ões':''} recebida${changed>1?'s':''}`:'');
@@ -1415,6 +1587,7 @@ document.getElementById('btnSyncSave').addEventListener('click',()=>{
   SY.url=syUrl.value.trim(); SY.g=syG.value.trim().toLowerCase();
   if(!SY.url||!SY.g){ toast('Preencha o endereço e o código'); return; }
   SY.since=0; saveCfg(); KEYS.forEach(k=>{ if(DB.t[k].ts) dirty.add(k); });
+  dirty.add('@prog'); dirty.add('@saidas');
   toast('Sincronização ligada'); sync(false);
 });
 document.getElementById('btnSync').addEventListener('click',()=>{
@@ -1433,7 +1606,7 @@ addEventListener('resize',()=>{ if(cur) renderGrid(); });
   rebuildKeys();
   if(!s) Store.save(DB);
   applyCongBranding();
-  renderBoard(); renderSummary(); buildPeople(); renderProg();
+  renderBoard(); renderSummary(); buildPeople(); renderProg(); renderSaidas();
   loadGenMap();
   syUrl.value=SY.url||''; syG.value=SY.g||'';
   if(SY.url&&SY.g){ syncStatus('ligada',true); sync(true); }
