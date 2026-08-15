@@ -337,11 +337,61 @@ textarea{resize:vertical;min-height:62px}
 .toast.show{opacity:1;transform:translateX(-50%)}
 .note{font-size:11.5px;color:var(--faint);text-align:center;margin:14px 0 0}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- login ---------- */
+#authgate{align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+#authgate .box{width:100%;max-width:380px;text-align:center;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r);padding:26px 22px;box-shadow:var(--sh-l)}
+#authgate h1{font-family:Caveat,"Comic Sans MS",cursive;font-weight:700;color:var(--cover-ink);font-size:42px;margin:0 0 4px}
+#authgate .fields{grid-template-columns:1fr;margin-top:14px}
+#authErr{color:var(--red);font-size:12.5px;margin:10px 0 0;display:none;line-height:1.4}
+#authgate .acts{flex-direction:column;margin-top:16px;align-items:stretch}
+#authgate .acts .btn{width:100%;justify-content:center;display:flex;align-items:center;gap:9px}
+#authgate .acts .btn.link{background:transparent;border-color:transparent;color:var(--muted)}
+#appRoot.hide{display:none}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
+<!-- ---------- entrada / login ---------- -->
+<section class="sheet open" id="authgate" aria-hidden="false">
+  <div class="box">
+    <h1>Nosso Território</h1>
+    <p class="note" style="margin:0 0 4px">Entre para acessar e sincronizar seus territórios em qualquer aparelho.</p>
+
+    <div class="seg" id="authTabs" style="margin-top:16px">
+      <button type="button" data-t="in" aria-pressed="true">Entrar</button>
+      <button type="button" data-t="up" aria-pressed="false">Criar conta</button>
+    </div>
+
+    <div class="fields">
+      <label class="f full"><span>E-mail</span><input type="email" id="authEmail" placeholder="seu@email.com" autocomplete="username"></label>
+      <label class="f full"><span>Senha</span><input type="password" id="authPass" placeholder="Mínimo 6 caracteres" autocomplete="current-password"></label>
+    </div>
+
+    <p id="authErr"></p>
+
+    <div class="acts">
+      <button class="btn primary" id="btnAuthSubmit">Entrar</button>
+      <button class="btn" id="btnAuthGoogle">
+        <svg width="17" height="17" viewBox="0 0 48 48" style="flex:none">
+          <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.6 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.1 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/>
+          <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.1 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4c-7.5 0-14 4.2-17.7 10.7z"/>
+          <path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.5l-6.5-5.4C29.4 34.9 26.8 36 24 36c-5.3 0-9.7-3.4-11.3-8.1l-6.6 5.1C9.9 39.6 16.4 44 24 44z"/>
+          <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.5 5.4C41.8 35.8 44 30.3 44 24c0-1.3-.1-2.7-.4-3.5z"/>
+        </svg>
+        Continuar com Google
+      </button>
+      <button class="btn link" id="btnAuthForgot">Esqueci minha senha</button>
+    </div>
+  </div>
+</section>
+
+<div id="appRoot" class="hide">
 <header class="cover">
   <div class="wrap">
     <div class="inner">
@@ -564,17 +614,18 @@ textarea{resize:vertical;min-height:62px}
     </div>
 
     <div class="panel">
-      <h3>Sincronizar entre aparelhos <span id="syncDot" style="float:right;font-weight:600;letter-spacing:0;text-transform:none;font-size:11px;color:var(--muted)">desligada</span></h3>
-      <p class="note" style="text-align:left;margin:0 0 12px">Ligue nos dois aparelhos usando o mesmo endereço e o mesmo código. Tudo que for marcado num deles aparece no outro.</p>
-      <div class="fields">
-        <label class="f full"><span>Endereço do servidor</span><input type="text" id="syUrl" placeholder="https://script.google.com/macros/s/.../exec"></label>
-        <label class="f full"><span>Código do grupo</span><input type="text" id="syG" placeholder="Ex.: minha-congregacao"></label>
+      <h3>Conta <span id="acctDot" style="float:right;font-weight:600;letter-spacing:0;text-transform:none;font-size:11px;color:var(--muted)">—</span></h3>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span id="acctAvatar" style="width:44px;height:44px;border-radius:50%;background:var(--acc-soft);color:var(--acc);display:grid;place-items:center;font-size:15px;font-weight:800;flex:none">—</span>
+        <span style="flex:1;min-width:0">
+          <span id="acctName" style="display:block;font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</span>
+          <span id="acctEmail" style="display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</span>
+        </span>
       </div>
+      <p class="note" style="text-align:left;margin:12px 0" id="acctInfo">Seus dados são salvos na sua conta e aparecem automaticamente em qualquer aparelho onde você entrar com o mesmo login.</p>
       <div class="acts">
-        <button class="btn primary" id="btnSyncSave">Ligar sincronização</button>
-        <button class="btn" id="btnSync">Sincronizar agora</button>
+        <button class="btn danger" id="btnLogout">Sair da conta</button>
       </div>
-      <p class="note" style="text-align:left;margin-top:11px" id="syncInfo">Sem conexão configurada — o registro fica só neste aparelho.</p>
     </div>
 
     <div class="panel">
@@ -654,8 +705,9 @@ textarea{resize:vertical;min-height:62px}
 
 <datalist id="people"></datalist>
 <div class="toast" id="toast"></div>
+</div>
 <script>
-const KEY = 'nosso_territorio_dados_v1';
+let KEY = 'nosso_territorio_dados_v1';
 const TKEY = 'nosso_territorio_tema';
 const MAPKEY = 'mapaGeral';
 let KEYS = [];
@@ -664,6 +716,102 @@ const initials = n => n.trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('')
 const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const br = d => d? d.split('-').reverse().join('/') : '—';
 const rotulo = {new:'A iniciar',wip:'Em andamento',done:'Concluído'};
+
+/* ---------- firebase (login e sincronização por conta) ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyBaV6MtnGA3O0MnAD2ahQtNrpdsrcLnS_Y",
+  authDomain: "nosso-territorio-d1b6b.firebaseapp.com",
+  projectId: "nosso-territorio-d1b6b",
+  storageBucket: "nosso-territorio-d1b6b.firebasestorage.app",
+  messagingSenderId: "702151659736",
+  appId: "1:702151659736:web:60683540519543d54207ad",
+  measurementId: "G-R3SBYD0R07"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const dbFS = firebase.firestore();
+try{ dbFS.enablePersistence({synchronizeTabs:true}); }catch(e){}
+
+let firebaseUser=null, fsUnsub=null;
+
+let authMode='in';
+authTabs.addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  authMode=b.dataset.t;
+  [...authTabs.children].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  btnAuthSubmit.textContent = authMode==='in' ? 'Entrar' : 'Criar conta';
+  clearAuthErr();
+});
+function showAuthErr(msg){ authErr.textContent=msg; authErr.style.display='block'; }
+function clearAuthErr(){ authErr.style.display='none'; authErr.textContent=''; }
+function authErrMsg(code){
+  const map={
+    'auth/invalid-email':'E-mail inválido.',
+    'auth/missing-password':'Informe a senha.',
+    'auth/weak-password':'A senha precisa ter pelo menos 6 caracteres.',
+    'auth/email-already-in-use':'Este e-mail já tem uma conta. Toque em "Entrar".',
+    'auth/invalid-credential':'E-mail ou senha incorretos.',
+    'auth/wrong-password':'E-mail ou senha incorretos.',
+    'auth/user-not-found':'Não encontramos uma conta com este e-mail.',
+    'auth/too-many-requests':'Muitas tentativas. Aguarde um pouco e tente de novo.',
+    'auth/popup-closed-by-user':'Login cancelado.',
+    'auth/network-request-failed':'Sem conexão com a internet.'
+  };
+  return map[code] || 'Não foi possível entrar. Tente novamente.';
+}
+btnAuthSubmit.addEventListener('click', async ()=>{
+  clearAuthErr();
+  const email=authEmail.value.trim(), pass=authPass.value;
+  if(!email||!pass){ showAuthErr('Preencha e-mail e senha.'); return; }
+  btnAuthSubmit.disabled=true;
+  try{
+    if(authMode==='in') await auth.signInWithEmailAndPassword(email,pass);
+    else await auth.createUserWithEmailAndPassword(email,pass);
+  }catch(err){ showAuthErr(authErrMsg(err.code)); }
+  btnAuthSubmit.disabled=false;
+});
+btnAuthGoogle.addEventListener('click', async ()=>{
+  clearAuthErr();
+  try{ await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+  catch(err){ showAuthErr(authErrMsg(err.code)); }
+});
+btnAuthForgot.addEventListener('click', async ()=>{
+  clearAuthErr();
+  const email=authEmail.value.trim();
+  if(!email){ showAuthErr('Informe seu e-mail acima e toque de novo para receber o link de redefinição.'); return; }
+  try{ await auth.sendPasswordResetEmail(email); showAuthErr('E-mail de redefinição enviado. Verifique sua caixa de entrada.'); authErr.style.color='var(--acc)'; }
+  catch(err){ authErr.style.color='var(--red)'; showAuthErr(authErrMsg(err.code)); }
+});
+document.getElementById('btnLogout').addEventListener('click', async ()=>{
+  if(!await ask('Sair da sua conta neste aparelho?','Sair')) return;
+  try{ await auth.signOut(); }catch(e){}
+});
+function fillAccountInfo(user){
+  const name = user.displayName || (user.email? user.email.split('@')[0] : 'Conta');
+  document.getElementById('acctName').textContent = name;
+  document.getElementById('acctEmail').textContent = user.email || '';
+  document.getElementById('acctAvatar').textContent = initials(name);
+}
+function cloudStatus(txt,ok){
+  const d=document.getElementById('acctDot'); if(!d) return;
+  d.textContent=txt; d.style.color= ok? 'var(--acc)':'var(--muted)';
+}
+auth.onAuthStateChanged(async user=>{
+  if(user){
+    authgate.classList.remove('open'); authgate.setAttribute('aria-hidden','true');
+    appRoot.classList.remove('hide');
+    fillAccountInfo(user);
+    await bootApp(user);
+  } else {
+    if(fsUnsub){ fsUnsub(); fsUnsub=null; }
+    firebaseUser=null; DB=null; cur=null;
+    appRoot.classList.add('hide');
+    authgate.classList.add('open'); authgate.setAttribute('aria-hidden','false');
+    authEmail.value=''; authPass.value=''; clearAuthErr();
+    if(sheet) { sheet.classList.remove('open'); sheet.setAttribute('aria-hidden','true'); }
+    if(cfgsheet) { cfgsheet.classList.remove('open'); cfgsheet.setAttribute('aria-hidden','true'); }
+  }
+});
 
 /* ---------- tema ---------- */
 const SUN='<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>';
@@ -728,19 +876,15 @@ const Store={
 };
 let DB=null, cur=null, filter='all', term='', saveT=null;
 const dirty=new Set();
-const SCFG='territorios_sync_cfg';
-let SY={url:'',g:'',since:0}, syncing=false, syncT=null, lastOk=0;
-try{ const c=localStorage.getItem(SCFG); if(c) SY=Object.assign(SY,JSON.parse(c)); }catch(e){}
-function saveCfg(){ try{ localStorage.setItem(SCFG,JSON.stringify(SY)); }catch(e){} }
 function blankT(){ return {name:'',resp:'',assign:'',start:'',end:'',stop:'',notes:'',started:false,tipo:'urbano',distrito:'',refs:'',ts:0}; }
-function seed(n){ const t={}; for(let i=1;i<=n;i++) t[String(i)]=blankT(); return {v:3,t,p:{items:[],ts:0},s:{items:[],ts:0},cfg:{congName:'',city:'',total:n}}; }
+function seed(n){ const t={}; for(let i=1;i<=n;i++) t[String(i)]=blankT(); return {v:3,t,p:{items:[],ts:0},s:{items:[],ts:0},cfg:{congName:'',city:'',total:n,ts:Date.now()}}; }
 function rebuildKeys(){
   const n=Math.max(1,(DB.cfg&&DB.cfg.total)||1);
   KEYS=Array.from({length:n},(_,i)=>String(i+1));
   KEYS.forEach(k=>{ if(!DB.t[k]) DB.t[k]=blankT(); });
 }
-function persist(){ clearTimeout(saveT); saveT=setTimeout(()=>Store.save(DB),250); }
-function touch(k){ if(!k) return; DB.t[k].ts=Date.now(); dirty.add(k); persist(); schedule(); }
+function persist(){ clearTimeout(saveT); saveT=setTimeout(()=>{ Store.save(DB); pushToCloud(); },250); }
+function touch(k){ if(!k) return; DB.t[k].ts=Date.now(); dirty.add(k); persist(); }
 
 function status(k){ const t=DB.t[k]; if(!t) return 'new'; return t.end? 'done' : (t.started? 'wip':'new'); }
 function gLabel(k){
@@ -1062,7 +1206,7 @@ function renderAbout(){
 }
 btnCfgSave.addEventListener('click',()=>{
   const n=Math.max(1,Math.min(500, parseInt(cfgTotal.value,10)||KEYS.length));
-  DB.cfg.congName=cfgCong.value.trim(); DB.cfg.city=cfgCity.value.trim(); DB.cfg.total=n;
+  DB.cfg.congName=cfgCong.value.trim(); DB.cfg.city=cfgCity.value.trim(); DB.cfg.total=n; DB.cfg.ts=Date.now();
   rebuildKeys(); applyCongBranding(); persist();
   renderBoard(); renderSummary(); renderProg(); renderMapIndex(); renderAbout();
   toast('Configurações salvas');
@@ -1080,8 +1224,8 @@ fileIn.addEventListener('change',e=>{
   r.onload=async ()=>{ try{ const d=JSON.parse(r.result); if(!d||!d.t) throw 0;
       if(!await ask('Restaurar este arquivo? As marcações atuais deste aparelho serão substituídas.','Restaurar')) return;
       DB=merge(d); rebuildKeys(); Object.keys(DB.t).forEach(k=>{DB.t[k].ts=Date.now(); dirty.add(k);});
-      DB.p.ts=Date.now(); dirty.add('@prog'); DB.s.ts=Date.now(); dirty.add('@saidas');
-      persist(); schedule(); applyCongBranding();
+      DB.p.ts=Date.now(); dirty.add('@prog'); DB.s.ts=Date.now(); dirty.add('@saidas'); DB.cfg.ts=Date.now();
+      persist(); applyCongBranding();
       renderProg(); renderSaidas(); renderSummary(); renderBoard(); renderMapIndex(); fillCfgForm(); renderAbout(); toast('Restaurado');
     }catch(err){ toast('Arquivo não reconhecido'); } fileIn.value=''; };
   r.readAsText(f);
@@ -1106,7 +1250,7 @@ function buildPeople(){ document.getElementById('people').innerHTML = people().m
 
 /* ---------- pontos de saída ---------- */
 function sitems(){ return (DB.s.items||[]).filter(i=>!i.del); }
-function touchSaidas(){ DB.s.ts=Date.now(); dirty.add('@saidas'); persist(); schedule(); }
+function touchSaidas(){ DB.s.ts=Date.now(); dirty.add('@saidas'); persist(); }
 let editS=null, pickSel=new Set();
 function renderSaidas(){
   const l=sitems().sort((a,b)=>(a.data||'9999').localeCompare(b.data||'9999')||(a.nome||'').localeCompare(b.nome||''));
@@ -1219,7 +1363,7 @@ chkRota.addEventListener('change',()=>{ try{ localStorage.setItem('territorios_r
 const WD=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
 let progF='next', editP=null;
 function pitems(){ return (DB.p.items||[]).filter(i=>!i.del); }
-function touchProg(){ DB.p.ts=Date.now(); dirty.add('@prog'); persist(); schedule(); }
+function touchProg(){ DB.p.ts=Date.now(); dirty.add('@prog'); persist(); }
 function places(){ return [...new Set(pitems().map(i=>(i.place||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt')); }
 function buildPlaces(){ document.getElementById('places').innerHTML = places().map(p=>`<option value="${esc(p)}">`).join(''); }
 function weekRange(){
@@ -1325,71 +1469,93 @@ btnCopyProg.addEventListener('click',async ()=>{
   }
 });
 
-/* ---------- sincronização ---------- */
-function schedule(){ if(!SY.url||!SY.g) return; clearTimeout(syncT); syncT=setTimeout(()=>sync(true),2200); }
-function syncStatus(txt,ok){
-  const d=document.getElementById('syncDot'); if(!d) return;
-  d.textContent=txt; d.style.color= ok? 'var(--acc)':'var(--muted)';
+/* ---------- sincronização por conta (Firestore) ---------- */
+function mergeItems(aItems,bItems){
+  const mapa={};
+  (aItems||[]).forEach(x=>mapa[x.id]=x);
+  (bItems||[]).forEach(x=>{
+    const a=mapa[x.id];
+    if(!a || (x.ts||0) > (a.ts||0)) mapa[x.id]=x;
+  });
+  return Object.values(mapa);
 }
-function since(ms){
-  const s=Math.round((Date.now()-ms)/1000);
-  if(s<60) return 'agora mesmo';
-  if(s<3600) return 'há '+Math.round(s/60)+' min';
-  if(s<86400) return 'há '+Math.round(s/3600)+' h';
-  return 'há '+Math.round(s/86400)+' dias';
+function mergeRemote(localRaw,remoteRaw){
+  const a=merge(localRaw), b=merge(remoteRaw);
+  const t={};
+  new Set([...Object.keys(a.t),...Object.keys(b.t)]).forEach(k=>{
+    const ta=a.t[k], tb=b.t[k];
+    t[k] = (!ta)? tb : (!tb)? ta : ((tb.ts||0) > (ta.ts||0)? tb : ta);
+  });
+  const p={ items: mergeItems(a.p.items,b.p.items), ts: Math.max(a.p.ts||0,b.p.ts||0) };
+  const s={ items: mergeItems(a.s.items,b.s.items), ts: Math.max(a.s.ts||0,b.s.ts||0) };
+  const cfg = ((b.cfg&&b.cfg.ts)||0) >= ((a.cfg&&a.cfg.ts)||0) ? b.cfg : a.cfg;
+  return {v:3,t,p,s,cfg};
 }
-async function sync(silent){
-  if(!SY.url||!SY.g){ if(!silent) toast('Configure o endereço e o código do grupo'); return; }
-  if(syncing) return;
-  syncing=true; syncStatus('sincronizando...',false);
-  const items=[...dirty].filter(k=>k!=='@prog'&&k!=='@saidas').map(k=>({k,ts:DB.t[k].ts||Date.now(),d:DB.t[k]}));
-  if(dirty.has('@prog')) items.push({k:'@prog',ts:DB.p.ts||Date.now(),d:{items:DB.p.items||[]}});
-  if(dirty.has('@saidas')) items.push({k:'@saidas',ts:DB.s.ts||Date.now(),d:{items:DB.s.items||[]}});
+let pushT=null, pushing=false, pushAgain=false;
+function pushToCloud(){
+  if(!firebaseUser) return;
+  clearTimeout(pushT);
+  pushT=setTimeout(async ()=>{
+    if(pushing){ pushAgain=true; return; }
+    pushing=true; cloudStatus('sincronizando...',false);
+    try{
+      await dbFS.collection('usuarios').doc(firebaseUser.uid).set(DB);
+      cloudStatus('sincronizado',true);
+    }catch(err){
+      cloudStatus('sem conexão',false);
+    }
+    pushing=false;
+    if(pushAgain){ pushAgain=false; pushToCloud(); }
+  },500);
+}
+function attachCloudListener(uid){
+  if(fsUnsub){ fsUnsub(); fsUnsub=null; }
+  fsUnsub = dbFS.collection('usuarios').doc(uid).onSnapshot(snap=>{
+    if(!snap.exists || snap.metadata.hasPendingWrites) return;
+    const remote=snap.data(); if(!remote||!remote.t) return;
+    const before=JSON.stringify(DB);
+    const merged=mergeRemote(DB,remote);
+    DB=merged; rebuildKeys();
+    if(JSON.stringify(DB)!==before){
+      Store.save(DB); applyCongBranding();
+      renderBoard(); renderSummary(); buildPeople(); renderProg(); renderSaidas(); renderMapIndex();
+      if(cur && DB.t[cur]) renderStart();
+    }
+    cloudStatus('sincronizado',true);
+  }, ()=>{ cloudStatus('sem conexão',false); });
+}
+async function bootApp(user){
+  firebaseUser=user;
+  KEY = 'nosso_territorio_dados_v1_'+user.uid;
+  document.body.style.overflow='';
+  const local = await Store.load();
+  let remote=null;
   try{
-    const r=await fetch(SY.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({a:'sync',g:SY.g,since:SY.since||0,items})});
-    const j=await r.json();
-    if(!j||!j.ok) throw new Error(j&&j.err||'resposta inválida');
-    items.forEach(i=>dirty.delete(i.k));
-    let changed=0;
-    (j.items||[]).forEach(it=>{
-      if(it.k==='@prog'){
-        const mapa={}; (DB.p.items||[]).forEach(x=>mapa[x.id]=x);
-        let mudou=false;
-        ((it.d&&it.d.items)||[]).forEach(x=>{
-          const a=mapa[x.id];
-          if(!a || (x.ts||0) > (a.ts||0)){ mapa[x.id]=x; mudou=true; }
-        });
-        if(mudou){ DB.p.items=Object.values(mapa); DB.p.ts=Date.now(); dirty.add('@prog'); changed++; }
-        return;
-      }
-      if(it.k==='@saidas'){
-        const mapa={}; (DB.s.items||[]).forEach(x=>mapa[x.id]=x);
-        let mudou=false;
-        ((it.d&&it.d.items)||[]).forEach(x=>{
-          const a=mapa[x.id];
-          if(!a || (x.ts||0) > (a.ts||0)){ mapa[x.id]=x; mudou=true; }
-        });
-        if(mudou){ DB.s.items=Object.values(mapa); DB.s.ts=Date.now(); dirty.add('@saidas'); changed++; }
-        return;
-      }
-      if(!DB.t[it.k]) DB.t[it.k]=blankT();
-      const loc=DB.t[it.k];
-      if((it.ts||0) > (loc.ts||0)){ DB.t[it.k]=Object.assign(loc,normT(it.d),{ts:it.ts}); changed++; }
-    });
-    SY.since=j.now||Date.now(); saveCfg(); persist(); lastOk=Date.now();
-    if(changed){ renderBoard(); renderSummary(); buildPeople(); renderProg(); renderSaidas(); renderMapIndex(); if(cur){ renderStart(); } }
-    syncStatus('sincronizado',true);
-    const info=document.getElementById('syncInfo');
-    if(info) info.textContent='Última sincronização '+since(lastOk)+(changed?` · ${changed} atualização${changed>1?'ões':''} recebida${changed>1?'s':''}`:'');
-    if(!silent) toast(changed? changed+' atualização(ões) recebida(s)' : 'Tudo em dia');
-  }catch(err){
-    syncStatus('sem conexão',false);
-    const info=document.getElementById('syncInfo');
-    if(info) info.textContent='Não foi possível sincronizar agora. As marcações ficam guardadas e sobem na próxima tentativa.';
-    if(!silent) toast('Falha ao sincronizar');
+    const snap = await dbFS.collection('usuarios').doc(user.uid).get();
+    if(snap.exists) remote=snap.data();
+  }catch(e){}
+  let base;
+  if(local && remote) base = mergeRemote(local,remote);
+  else base = local || remote;
+  const firstRun=!base;
+  DB = base? merge(base) : seed(20);
+  if(!DB.cfg) DB.cfg={congName:'',city:'',total:Object.keys(DB.t).length||20};
+  if(!DB.cfg.ts) DB.cfg.ts=Date.now();
+  rebuildKeys();
+  Store.save(DB); pushToCloud();
+  applyCongBranding();
+  renderBoard(); renderSummary(); buildPeople(); renderProg(); renderSaidas();
+  loadGenMap();
+  attachCloudListener(user.uid);
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+  if(firstRun){
+    setTimeout(()=>{
+      fillCfgForm(); renderAbout();
+      cfgsheet.classList.add('open'); cfgsheet.setAttribute('aria-hidden','false');
+      document.body.style.overflow='hidden'; history.pushState({s:1},'');
+      toast('Configure sua congregação para começar');
+    },450);
   }
-  syncing=false;
 }
 let askResolve=null;
 function ask(msg, okLabel){
@@ -1410,43 +1576,8 @@ askmodal.addEventListener('click',e=>{ if(e.target===askmodal) closeAsk(false); 
 let tT=null;
 function toast(m){ const e=document.getElementById('toast'); e.textContent=m; e.classList.add('show');
   clearTimeout(tT); tT=setTimeout(()=>e.classList.remove('show'),1800); }
-document.getElementById('btnSyncSave').addEventListener('click',()=>{
-  SY.url=syUrl.value.trim(); SY.g=syG.value.trim().toLowerCase();
-  if(!SY.url||!SY.g){ toast('Preencha o endereço e o código'); return; }
-  SY.since=0; saveCfg(); KEYS.forEach(k=>{ if(DB.t[k].ts) dirty.add(k); });
-  dirty.add('@prog'); dirty.add('@saidas');
-  toast('Sincronização ligada'); sync(false);
-});
-document.getElementById('btnSync').addEventListener('click',()=>{
-  SY.url=syUrl.value.trim()||SY.url; SY.g=(syG.value.trim()||SY.g).toLowerCase(); saveCfg(); sync(false);
-});
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden) sync(true); });
-setInterval(()=>sync(true),45000);
-addEventListener('online',()=>sync(true));
-
-(async function(){
-  document.body.style.overflow='';
-  const s=await Store.load();
-  const firstRun=!s;
-  DB = s? merge(s) : seed(20);
-  if(!DB.cfg) DB.cfg={congName:'',city:'',total:Object.keys(DB.t).length||20};
-  rebuildKeys();
-  if(!s) Store.save(DB);
-  applyCongBranding();
-  renderBoard(); renderSummary(); buildPeople(); renderProg(); renderSaidas();
-  loadGenMap();
-  syUrl.value=SY.url||''; syG.value=SY.g||'';
-  if(SY.url&&SY.g){ syncStatus('ligada',true); sync(true); }
-  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
-  if(firstRun){
-    setTimeout(()=>{
-      fillCfgForm(); renderAbout();
-      cfgsheet.classList.add('open'); cfgsheet.setAttribute('aria-hidden','false');
-      document.body.style.overflow='hidden'; history.pushState({s:1},'');
-      toast('Configure sua congregação para começar');
-    },450);
-  }
-})();
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && firebaseUser) pushToCloud(); });
+addEventListener('online',()=>{ if(firebaseUser) pushToCloud(); });
 </script>
 </body>
 </html>
