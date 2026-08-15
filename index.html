@@ -182,28 +182,6 @@ button{border:none;background:none;cursor:pointer}
 .card[data-st="done"]{border-color:var(--acc)}
 .empty{text-align:center;color:var(--muted);padding:50px 20px}
 
-/* ---------- quadras (grade abstrata) ---------- */
-.qgrid{display:flex;flex-wrap:wrap;gap:7px;padding:14px}
-.qtile{
-  width:var(--tsz,46px);height:var(--tsz,46px);border-radius:11px;display:grid;place-items:center;
-  font-size:13px;font-weight:800;color:#fff;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);
-  transition:transform .12s ease;
-}
-.qtile:active{transform:scale(.92)}
-.qtile[data-st="0"]{background:var(--red)}
-.qtile[data-st="1"]{background:repeating-linear-gradient(45deg,var(--amber) 0 4px,var(--amber-soft) 4px 8px);color:var(--text)}
-.qtile[data-st="2"]{background:var(--acc)}
-.qempty{padding:24px;text-align:center;color:var(--muted);font-size:13.5px;width:100%}
-
-/* ---------- miniatura abstrata do cartão ---------- */
-.thumbgrid{display:flex;flex-wrap:wrap;align-content:flex-start;gap:3px;padding:9px}
-.thumbgrid i{width:13px;height:13px;border-radius:3px;display:block;flex:none}
-.thumbgrid i[data-st="0"]{background:var(--red-soft);box-shadow:inset 0 0 0 1px var(--red)}
-.thumbgrid i[data-st="1"]{background:repeating-linear-gradient(45deg,var(--amber) 0 3px,var(--amber-soft) 3px 6px)}
-.thumbgrid i[data-st="2"]{background:var(--acc)}
-.thumbgrid .more{font-size:10px;color:var(--muted);align-self:center;margin-left:2px}
-.thumbempty{display:grid;place-items:center;height:100%;color:var(--faint);font-size:11px;text-align:center;padding:8px}
-
 /* ---------- programação de campo ---------- */
 .progtop{display:flex;gap:8px;align-items:stretch;margin:16px 0 10px}
 .progtop .add{
