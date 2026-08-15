@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#F4F6F5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D1311" media="(prefers-color-scheme: dark)">
@@ -39,8 +39,8 @@ html[data-theme="dark"]{
   --sh:0 1px 2px rgba(0,0,0,.4), 0 12px 28px -20px rgba(0,0,0,.9);
   --sh-l:0 2px 8px rgba(0,0,0,.5), 0 28px 56px -30px rgba(0,0,0,1);
 }
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0;overscroll-behavior-y:none;overflow-x:hidden;max-width:100%}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:pan-x pan-y}
+html,body{margin:0;padding:0;overflow-x:hidden;max-width:100%}
 body{
   background:var(--bg);color:var(--text);
   font-family:Manrope,system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.5;
@@ -276,7 +276,8 @@ button{border:none;background:none;cursor:pointer}
 .startbar .info .tx small{display:block;font-size:11.5px;font-weight:500;color:var(--muted)}
 .startbar .info button{font-size:12px;font-weight:700;color:var(--muted);padding:6px 10px;border-radius:99px;border:1px solid var(--line)}
 .mapcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin:14px 0}
-.mapscroll{overflow:auto;-webkit-overflow-scrolling:touch;max-height:60vh;background:var(--surface)}
+.mapscroll{overflow:auto;-webkit-overflow-scrolling:touch;max-height:60vh;background:var(--surface);touch-action:pan-x pan-y}
+.mapscroll,.mapscroll *{touch-action:pan-x pan-y}
 .mapscroll svg{display:block}
 .maptools{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line);flex-wrap:wrap}
 .maptools .lg{display:flex;gap:11px;flex:1;flex-wrap:wrap;font-size:11px;color:var(--muted);min-width:0}
@@ -337,6 +338,7 @@ textarea{resize:vertical;min-height:62px}
 .note{font-size:11.5px;color:var(--faint);text-align:center;margin:14px 0 0}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 
@@ -695,7 +697,7 @@ btnCfg.addEventListener('click',()=>{
   fillCfgForm(); renderAbout();
   history.pushState({s:1},'');
 });
-cfgBack.addEventListener('click',()=>history.back());
+/* fechar config: ver closeCfgSheet() mais abaixo */
 
 /* ---------- guarda (indexedDB simples p/ arquivos grandes) ---------- */
 const IDB = (function(){
@@ -832,20 +834,37 @@ function renderBoard(){
 
 /* ---------- mapa geral (upload) ---------- */
 let genMap=null, genZoom=1;
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 async function loadGenMap(){
   try{ genMap=await IDB.get(MAPKEY); }catch(e){ genMap=null; }
   renderGenMap();
 }
-function renderGenMap(){
+async function renderGenMap(){
   if(!genMap){ genEmpty.classList.remove('hide'); genView.classList.add('hide'); renderMapIndex(); return; }
   genEmpty.classList.add('hide'); genView.classList.remove('hide');
   const url=URL.createObjectURL(genMap.blob);
   const pct=Math.round(100*genZoom);
-  allscroll.innerHTML = genMap.type==='pdf'
-    ? `<iframe src="${url}" style="width:${pct}%;min-height:62vh;border:0;display:block;background:var(--surface)"></iframe>`
-    : `<img src="${url}" style="width:${pct}%;display:block" alt="Mapa geral">`;
   genInfo.textContent = genMap.name||'Mapa geral';
+  if(genMap.type==='pdf'){
+    allscroll.innerHTML = '<canvas style="display:block;width:'+pct+'%"></canvas>';
+    const canvas = allscroll.querySelector('canvas');
+    try{
+      const pdf = await pdfjsLib.getDocument(url).promise;
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({scale:2});
+      canvas.width = viewport.width; canvas.height = viewport.height;
+      await page.render({canvasContext:canvas.getContext('2d'), viewport}).promise;
+    }catch(err){
+      allscroll.innerHTML = '<p style="padding:24px;color:var(--muted);text-align:center">Não foi possível exibir este PDF. Tente enviar como imagem.</p>';
+    }
+  } else {
+    allscroll.innerHTML = `<img src="${url}" style="width:${pct}%;display:block" alt="Mapa geral">`;
+  }
   renderMapIndex();
+}
+function applyGenZoom(){
+  const el=allscroll.querySelector('img,canvas');
+  if(el) el.style.width=Math.round(100*genZoom)+'%';
 }
 function renderMapIndex(){
   mapIndex.innerHTML = KEYS.map(k=>{
@@ -872,8 +891,26 @@ btnMapRemove.addEventListener('click', async ()=>{
   try{ await IDB.del(MAPKEY); }catch(e){}
   genMap=null; renderGenMap(); toast('Mapa removido');
 });
-gzIn.addEventListener('click',()=>{ genZoom=Math.min(3,+(genZoom*1.25).toFixed(2)); renderGenMap(); });
-gzOut.addEventListener('click',()=>{ genZoom=Math.max(1,+(genZoom/1.25).toFixed(2)); renderGenMap(); });
+gzIn.addEventListener('click',()=>{ genZoom=Math.min(3,+(genZoom*1.25).toFixed(2)); applyGenZoom(); });
+gzOut.addEventListener('click',()=>{ genZoom=Math.max(1,+(genZoom/1.25).toFixed(2)); applyGenZoom(); });
+
+/* ---------- pinça para zoom no mapa geral ---------- */
+(function(){
+  let pinching=false, startDist=0, startZoom=1;
+  function dist(a,b){ return Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY); }
+  allscroll.addEventListener('touchstart',e=>{
+    if(e.touches.length===2){ pinching=true; startDist=dist(e.touches[0],e.touches[1]); startZoom=genZoom; }
+  },{passive:true});
+  allscroll.addEventListener('touchmove',e=>{
+    if(!pinching || e.touches.length!==2) return;
+    e.preventDefault();
+    const d=dist(e.touches[0],e.touches[1]);
+    genZoom=Math.min(3,Math.max(1,+(startZoom*(d/startDist)).toFixed(2)));
+    applyGenZoom();
+  },{passive:false});
+  allscroll.addEventListener('touchend',e=>{ if(e.touches.length<2) pinching=false; },{passive:true});
+  allscroll.addEventListener('touchcancel',()=>{ pinching=false; },{passive:true});
+})();
 
 /* ---------- detalhe ---------- */
 function openT(k,push=true){
@@ -958,12 +995,20 @@ detail.addEventListener('touchend',e=>{
 });
 
 /* ---------- controles ---------- */
-btnBack.addEventListener('click',()=>history.back());
+function closeCfgSheet(){
+  cfgsheet.classList.remove('open'); cfgsheet.setAttribute('aria-hidden','true');
+  document.body.style.overflow=''; renderBoard(); renderSummary();
+}
+btnBack.addEventListener('click',()=>{
+  closeSheet();
+  if(history.state&&history.state.s===1){ try{ history.back(); }catch(e){} }
+});
+cfgBack.addEventListener('click',()=>{
+  closeCfgSheet();
+  if(history.state&&history.state.s===1){ try{ history.back(); }catch(e){} }
+});
 window.addEventListener('popstate',()=>{
-  if(cfgsheet.classList.contains('open')){
-    cfgsheet.classList.remove('open'); cfgsheet.setAttribute('aria-hidden','true');
-    document.body.style.overflow=''; renderBoard(); renderSummary(); return;
-  }
+  if(cfgsheet.classList.contains('open')){ closeCfgSheet(); return; }
   if(sheet.classList.contains('open')) closeSheet();
 });
 btnReset.addEventListener('click',async ()=>{ if(!await ask('Apagar tudo deste território: datas, responsável e observações?','Apagar tudo'))return;
@@ -1380,6 +1425,7 @@ setInterval(()=>sync(true),45000);
 addEventListener('online',()=>sync(true));
 
 (async function(){
+  document.body.style.overflow='';
   const s=await Store.load();
   const firstRun=!s;
   DB = s? merge(s) : seed(20);
