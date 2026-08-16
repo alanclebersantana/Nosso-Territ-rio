@@ -322,13 +322,15 @@ textarea{resize:vertical;min-height:62px}
 .swipehint{text-align:center;font-size:11.5px;color:var(--faint);padding:2px 0 18px}
 
 /* ---------- histórico do território ---------- */
-.histrow{display:flex;align-items:center;gap:10px;padding:11px 2px;border-bottom:1px solid var(--line)}
+.histrow{display:flex;align-items:center;gap:8px;padding:11px 2px;border-bottom:1px solid var(--line)}
 .histrow:last-child{border-bottom:none}
 .histrow .hd{flex:1;min-width:0}
 .histrow .hd b{display:block;font-size:13.5px;font-weight:700}
 .histrow .hd small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
-.histdel{width:30px;height:30px;border-radius:50%;background:var(--red-soft);color:var(--red);display:grid;place-items:center;flex:none;font-size:14px;font-weight:700;line-height:1}
-.histdel:active{transform:scale(.92)}
+.histedit,.histdel{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;font-size:14px;font-weight:700;line-height:1}
+.histedit{background:var(--surface2);color:var(--muted);border:1px solid var(--line)}
+.histdel{background:var(--red-soft);color:var(--red)}
+.histedit:active,.histdel:active{transform:scale(.92)}
 .histempty{text-align:center;color:var(--muted);padding:22px 10px;font-size:13.5px}
 
 /* ---------- mapa geral (upload) ---------- */
@@ -519,6 +521,11 @@ textarea{resize:vertical;min-height:62px}
       </div>
     </div>
 
+    <button class="gomaps" id="btnOpenHist" style="margin-top:14px">
+      <svg viewBox="0 0 24 24"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+      <span><b>Histórico dos territórios</b><small>Ver início e conclusões registradas</small></span>
+    </button>
+
     <div class="panel">
       <h3>Andamento por área</h3>
       <div id="byGroup"></div>
@@ -601,10 +608,22 @@ textarea{resize:vertical;min-height:62px}
         <label class="f full"><span>Onde paramos</span><input type="text" id="fStop" placeholder="Ex.: Rua Kei Hamada, faltou o lado par"></label>
         <label class="f full"><span>Observações</span><textarea id="fNotes" placeholder="Cães bravos, portarias, moradores a revisitar..."></textarea></label>
       </div>
-      <div class="acts"><button class="btn" id="btnHist">Histórico</button><button class="btn danger" id="btnReset">Zerar território</button></div>
+      <div class="acts"><button class="btn danger" id="btnReset">Zerar território</button></div>
     </div>
 
     <p class="swipehint">Deslize para os lados para trocar de território</p>
+  </div>
+</section>
+
+<!-- ---------- histórico dos territórios (tela cheia) ---------- -->
+<section class="sheet" id="histsheet" aria-hidden="true">
+  <div class="dbar">
+    <button class="iconbtn" id="histBack" aria-label="Voltar"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="t"><div class="k">Registro</div><div class="n">Histórico dos territórios</div></div>
+  </div>
+  <div class="wrap">
+    <div class="searchrow"><input class="search" id="histSearch" type="search" placeholder="Buscar número ou nome" autocomplete="off"></div>
+    <div id="histBoard"></div>
   </div>
 </section>
 
@@ -708,14 +727,17 @@ textarea{resize:vertical;min-height:62px}
 
 <datalist id="places"></datalist>
 
-<div class="modal" id="histmodal" aria-hidden="true">
+<div class="modal" id="histEditModal" aria-hidden="true">
   <div class="box">
     <div class="grip"></div>
-    <h3 style="font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 13px" id="histTitle">Histórico do território</h3>
-    <div id="histList"></div>
+    <h3 style="font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 13px">Editar registro</h3>
+    <div class="fields">
+      <label class="f"><span>Início</span><input type="date" id="heStart"></label>
+      <label class="f"><span>Conclusão</span><input type="date" id="heEnd"></label>
+    </div>
     <div class="acts" style="justify-content:space-between">
-      <button class="btn danger" id="histClearAll">Excluir tudo</button>
-      <button class="btn primary" id="histClose">Fechar</button>
+      <button class="btn danger" id="heDel">Excluir</button>
+      <span style="display:flex;gap:8px"><button class="btn" id="heCancel">Cancelar</button><button class="btn primary" id="heSave">Salvar</button></span>
     </div>
   </div>
 </div>
@@ -1194,6 +1216,7 @@ cfgBack.addEventListener('click',()=>{
 });
 window.addEventListener('popstate',()=>{
   if(cfgsheet.classList.contains('open')){ closeCfgSheet(); return; }
+  if(histsheet.classList.contains('open')){ closeHistSheet(); return; }
   if(sheet.classList.contains('open')) closeSheet();
 });
 btnReset.addEventListener('click',async ()=>{ if(!await ask('Apagar tudo deste território: datas, responsável e observações?','Apagar tudo'))return;
@@ -1202,42 +1225,96 @@ btnReset.addEventListener('click',async ()=>{ if(!await ask('Apagar tudo deste t
   const keepHist=t.hist;
   DB.t[cur]=blankT(); DB.t[cur].hist=keepHist;
   touch(cur); openT(cur,false); renderBoard(); renderSummary(); buildPeople(); toast('Território zerado'); });
-btnHist.addEventListener('click',()=>{
-  renderHist();
-  histmodal.classList.add('open'); histmodal.setAttribute('aria-hidden','false');
-});
-function closeHist(){ histmodal.classList.remove('open'); histmodal.setAttribute('aria-hidden','true'); }
-histClose.addEventListener('click',closeHist);
-histmodal.addEventListener('click',e=>{ if(e.target===histmodal) closeHist(); });
-function renderHist(){
-  const t=DB.t[cur]; if(!t) return;
-  const list=(t.hist||[]).map((h,i)=>({...h,_i:i}))
-    .sort((a,b)=>(b.end||b.start||'').localeCompare(a.end||a.start||''));
-  histList.innerHTML = list.length? list.map(h=>{
-    let dur='';
-    if(h.start && h.end){
-      const d=Math.round((new Date(h.end)-new Date(h.start))/86400000);
-      if(d>0) dur=d+' dia'+(d>1?'s':''); else if(d===0) dur='no mesmo dia';
-    }
-    return `<div class="histrow"><span class="hd"><b>${br(h.start)} → ${h.end? br(h.end):'em andamento'}</b>${dur?`<small>${dur}</small>`:''}</span>
-      <button class="histdel" data-i="${h._i}" aria-label="Excluir registro">✕</button></div>`;
-  }).join('') : '<div class="histempty">Nenhum histórico registrado ainda.</div>';
+
+/* ---------- histórico dos territórios (tela cheia) ---------- */
+function closeHistSheet(){
+  histsheet.classList.remove('open'); histsheet.setAttribute('aria-hidden','true');
+  document.body.style.overflow='';
 }
-histList.addEventListener('click',async e=>{
-  const b=e.target.closest('.histdel'); if(!b) return;
+btnOpenHist.addEventListener('click',()=>{
+  histSearch.value=''; renderHistBoard();
+  histsheet.classList.add('open'); histsheet.setAttribute('aria-hidden','false');
+  document.body.style.overflow='hidden'; histsheet.scrollTop=0;
+  history.pushState({s:1},'');
+});
+histBack.addEventListener('click',()=>{
+  closeHistSheet();
+  if(history.state&&history.state.s===1){ try{ history.back(); }catch(e){} }
+});
+function histTerrList(){
+  const term=(histSearch.value||'').trim().toLowerCase();
+  return KEYS.filter(k=>DB.t[k].hist && DB.t[k].hist.length)
+    .filter(k=>!term || (k+' '+(DB.t[k].name||'')).toLowerCase().includes(term))
+    .sort((a,b)=>+a-+b);
+}
+function renderHistBoard(){
+  const ks=histTerrList();
+  histBoard.innerHTML = ks.length? ks.map(k=>{
+    const t=DB.t[k];
+    const entries=(t.hist||[]).map((h,i)=>({...h,_i:i}))
+      .sort((a,b)=>(b.end||b.start||'').localeCompare(a.end||a.start||''));
+    const rows=entries.map(h=>{
+      let dur='';
+      if(h.start && h.end){
+        const d=Math.round((new Date(h.end)-new Date(h.start))/86400000);
+        if(d>0) dur=d+' dia'+(d>1?'s':''); else if(d===0) dur='no mesmo dia';
+      }
+      return `<div class="histrow">
+        <span class="hd"><b>${br(h.start)} → ${h.end? br(h.end):'em andamento'}</b>${dur?`<small>${dur}</small>`:''}</span>
+        <button class="histedit" data-k="${k}" data-i="${h._i}" aria-label="Editar registro"><svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+        <button class="histdel" data-k="${k}" data-i="${h._i}" aria-label="Excluir registro">✕</button>
+      </div>`;
+    }).join('');
+    return `<div class="panel" style="margin:0 0 12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px">
+        <b style="font-size:14px;font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k}${t.name? ' · '+esc(t.name):''}</b>
+        <button class="histclear" data-k="${k}" style="font-size:11px;font-weight:700;color:var(--red);flex:none">Excluir tudo</button>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('') : '<div class="empty">Nenhum histórico registrado ainda.<br>Conclua um território para começar a registrar.</div>';
+}
+histSearch.addEventListener('input', renderHistBoard);
+histBoard.addEventListener('click', async e=>{
+  const ed=e.target.closest('.histedit');
+  if(ed){ openHistEdit(ed.dataset.k, +ed.dataset.i); return; }
+  const de=e.target.closest('.histdel');
+  if(de){
+    if(!await ask('Excluir este registro do histórico?','Excluir')) return;
+    const k=de.dataset.k, i=+de.dataset.i;
+    DB.t[k].hist.splice(i,1); touch(k); renderHistBoard(); toast('Registro excluído');
+    return;
+  }
+  const cl=e.target.closest('.histclear');
+  if(cl){
+    const k=cl.dataset.k;
+    if(!await ask('Excluir todo o histórico deste território? O registro atual não é afetado.','Excluir tudo')) return;
+    DB.t[k].hist=[]; touch(k); renderHistBoard(); toast('Histórico excluído');
+    return;
+  }
+});
+let heKey=null, heIdx=null;
+function openHistEdit(k,i){
+  heKey=k; heIdx=i;
+  const h=DB.t[k].hist[i];
+  heStart.value=h.start||''; heEnd.value=h.end||'';
+  histEditModal.classList.add('open'); histEditModal.setAttribute('aria-hidden','false');
+}
+function closeHistEdit(){ histEditModal.classList.remove('open'); histEditModal.setAttribute('aria-hidden','true'); heKey=null; heIdx=null; }
+heCancel.addEventListener('click', closeHistEdit);
+histEditModal.addEventListener('click', e=>{ if(e.target===histEditModal) closeHistEdit(); });
+heSave.addEventListener('click', ()=>{
+  if(!heStart.value){ toast('Informe a data de início'); return; }
+  if(heEnd.value && heEnd.value<heStart.value){ toast('A conclusão não pode ser antes do início'); return; }
+  DB.t[heKey].hist[heIdx] = {start:heStart.value, end:heEnd.value||'', ts:Date.now()};
+  touch(heKey); renderHistBoard(); closeHistEdit(); toast('Registro atualizado');
+});
+heDel.addEventListener('click', async ()=>{
   if(!await ask('Excluir este registro do histórico?','Excluir')) return;
-  const i=+b.dataset.i;
-  DB.t[cur].hist.splice(i,1);
-  touch(cur); renderHist();
-  toast('Registro excluído');
+  DB.t[heKey].hist.splice(heIdx,1);
+  touch(heKey); renderHistBoard(); closeHistEdit(); toast('Registro excluído');
 });
-histClearAll.addEventListener('click',async ()=>{
-  const t=DB.t[cur];
-  if(!t.hist || !t.hist.length){ toast('Não há histórico para excluir'); return; }
-  if(!await ask('Excluir todo o histórico deste território? O registro atual não é afetado.','Excluir tudo')) return;
-  t.hist=[]; touch(cur); renderHist();
-  toast('Histórico excluído');
-});
+
 [['fStart','start'],['fEnd','end'],['fName','name'],['fResp','resp'],['fAssign','assign'],['fStop','stop'],['fNotes','notes'],['fRefs','refs']].forEach(([id,k])=>{
   document.getElementById(id).addEventListener('input',e=>{
     DB.t[cur][k]=e.target.value; if(k==='start') DB.t[cur].started=!!e.target.value; touch(cur); if(k==='start') renderStart();
