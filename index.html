@@ -170,6 +170,10 @@ button{border:none;background:none;cursor:pointer}
 }
 .progtop .copy:active{transform:scale(.96)}
 .progtop .copy svg{width:19px;height:19px;stroke:var(--text);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#progShotWrap{background:var(--surface);padding:14px 14px 4px}
+#progShotWrap .shhead{display:flex;flex-direction:column;gap:2px;margin-bottom:12px}
+#progShotWrap .shhead b{font-size:16px;font-weight:800}
+#progShotWrap .shhead span{font-size:11.5px;color:var(--muted)}
 .day{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden;box-shadow:var(--sh);margin-bottom:9px}
 .day .dh{
   position:relative;display:flex;align-items:baseline;gap:9px;padding:7px 12px 8px;
@@ -317,6 +321,16 @@ textarea{resize:vertical;min-height:62px}
 
 .swipehint{text-align:center;font-size:11.5px;color:var(--faint);padding:2px 0 18px}
 
+/* ---------- histórico do território ---------- */
+.histrow{display:flex;align-items:center;gap:10px;padding:11px 2px;border-bottom:1px solid var(--line)}
+.histrow:last-child{border-bottom:none}
+.histrow .hd{flex:1;min-width:0}
+.histrow .hd b{display:block;font-size:13.5px;font-weight:700}
+.histrow .hd small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+.histdel{width:30px;height:30px;border-radius:50%;background:var(--red-soft);color:var(--red);display:grid;place-items:center;flex:none;font-size:14px;font-weight:700;line-height:1}
+.histdel:active{transform:scale(.92)}
+.histempty{text-align:center;color:var(--muted);padding:22px 10px;font-size:13.5px}
+
 /* ---------- mapa geral (upload) ---------- */
 .genempty{padding:34px 20px;text-align:center}
 .genempty p{margin:0 0 16px;color:var(--muted);font-size:13.5px;line-height:1.5}
@@ -351,6 +365,7 @@ textarea{resize:vertical;min-height:62px}
 #appRoot.hide{display:none}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -462,6 +477,7 @@ textarea{resize:vertical;min-height:62px}
     <div class="progtop">
       <button class="add" id="btnNewProg"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Nova saída de campo</button>
       <button class="copy" id="btnCopyProg" aria-label="Copiar como texto"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M15 9V6.5A2.5 2.5 0 0 0 12.5 4h-6A2.5 2.5 0 0 0 4 6.5v6A2.5 2.5 0 0 0 6.5 15H9"/></svg></button>
+      <button class="copy" id="btnDownloadProg" aria-label="Baixar como imagem"><svg viewBox="0 0 24 24"><path d="M12 3v13M7 11l5 5 5-5M4 21h16"/></svg></button>
     </div>
     <div class="chips" id="progFilter">
       <button class="chip" data-f="next" aria-pressed="true">A partir de hoje</button>
@@ -585,7 +601,7 @@ textarea{resize:vertical;min-height:62px}
         <label class="f full"><span>Onde paramos</span><input type="text" id="fStop" placeholder="Ex.: Rua Kei Hamada, faltou o lado par"></label>
         <label class="f full"><span>Observações</span><textarea id="fNotes" placeholder="Cães bravos, portarias, moradores a revisitar..."></textarea></label>
       </div>
-      <div class="acts"><button class="btn danger" id="btnReset">Zerar território</button></div>
+      <div class="acts"><button class="btn" id="btnHist">Histórico</button><button class="btn danger" id="btnReset">Zerar território</button></div>
     </div>
 
     <p class="swipehint">Deslize para os lados para trocar de território</p>
@@ -691,6 +707,18 @@ textarea{resize:vertical;min-height:62px}
 </div>
 
 <datalist id="places"></datalist>
+
+<div class="modal" id="histmodal" aria-hidden="true">
+  <div class="box">
+    <div class="grip"></div>
+    <h3 style="font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 13px" id="histTitle">Histórico do território</h3>
+    <div id="histList"></div>
+    <div class="acts" style="justify-content:space-between">
+      <button class="btn danger" id="histClearAll">Excluir tudo</button>
+      <button class="btn primary" id="histClose">Fechar</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal" id="askmodal" aria-hidden="true">
   <div class="box">
@@ -876,7 +904,14 @@ const Store={
 };
 let DB=null, cur=null, filter='all', term='', saveT=null;
 const dirty=new Set();
-function blankT(){ return {name:'',resp:'',assign:'',start:'',end:'',stop:'',notes:'',started:false,tipo:'urbano',distrito:'',refs:'',ts:0}; }
+function blankT(){ return {name:'',resp:'',assign:'',start:'',end:'',stop:'',notes:'',started:false,tipo:'urbano',distrito:'',refs:'',hist:[],ts:0}; }
+function addHist(t,start,end){
+  if(!start) return;
+  if(!t.hist) t.hist=[];
+  const last=t.hist[t.hist.length-1];
+  if(last && last.start===start && last.end===(end||'')) return;
+  t.hist.push({start,end:end||'',ts:Date.now()});
+}
 function seed(n){ const t={}; for(let i=1;i<=n;i++) t[String(i)]=blankT(); return {v:3,t,p:{items:[],ts:0},s:{items:[],ts:0},cfg:{congName:'',city:'',total:n,ts:Date.now()}}; }
 function rebuildKeys(){
   const n=Math.max(1,(DB.cfg&&DB.cfg.total)||1);
@@ -1115,13 +1150,19 @@ function renderStart(){
   const bd=document.getElementById('btnDone');
   if(bd) bd.addEventListener('click',()=>{
     t.started=true; if(!t.start) t.start=today();
-    t.end=today(); touch(cur); fStart.value=t.start; fEnd.value=t.end;
+    t.end=today(); addHist(t,t.start,t.end); touch(cur); fStart.value=t.start; fEnd.value=t.end;
     renderStart(); toast('Concluído em '+br(t.end));
   });
   const bu=document.getElementById('btnUndo');
   if(bu) bu.addEventListener('click',()=>{ t.started=false; t.start=''; touch(cur); fStart.value=''; renderStart(); });
   const bre=document.getElementById('btnReabrir');
-  if(bre) bre.addEventListener('click',()=>{ t.end=''; touch(cur); fEnd.value=''; renderStart(); toast('Território reaberto'); });
+  if(bre) bre.addEventListener('click',()=>{
+    if(t.hist && t.hist.length){
+      const last=t.hist[t.hist.length-1];
+      if(last.start===t.start && last.end===t.end) t.hist.pop();
+    }
+    t.end=''; touch(cur); fEnd.value=''; renderStart(); toast('Território reaberto');
+  });
 }
 
 /* ---------- deslizar entre territórios ---------- */
@@ -1156,7 +1197,47 @@ window.addEventListener('popstate',()=>{
   if(sheet.classList.contains('open')) closeSheet();
 });
 btnReset.addEventListener('click',async ()=>{ if(!await ask('Apagar tudo deste território: datas, responsável e observações?','Apagar tudo'))return;
-  DB.t[cur]=blankT(); touch(cur); openT(cur,false); renderBoard(); renderSummary(); buildPeople(); toast('Território zerado'); });
+  const t=DB.t[cur]; if(!t.hist) t.hist=[];
+  if(t.end) addHist(t,t.start,t.end);
+  const keepHist=t.hist;
+  DB.t[cur]=blankT(); DB.t[cur].hist=keepHist;
+  touch(cur); openT(cur,false); renderBoard(); renderSummary(); buildPeople(); toast('Território zerado'); });
+btnHist.addEventListener('click',()=>{
+  renderHist();
+  histmodal.classList.add('open'); histmodal.setAttribute('aria-hidden','false');
+});
+function closeHist(){ histmodal.classList.remove('open'); histmodal.setAttribute('aria-hidden','true'); }
+histClose.addEventListener('click',closeHist);
+histmodal.addEventListener('click',e=>{ if(e.target===histmodal) closeHist(); });
+function renderHist(){
+  const t=DB.t[cur]; if(!t) return;
+  const list=(t.hist||[]).map((h,i)=>({...h,_i:i}))
+    .sort((a,b)=>(b.end||b.start||'').localeCompare(a.end||a.start||''));
+  histList.innerHTML = list.length? list.map(h=>{
+    let dur='';
+    if(h.start && h.end){
+      const d=Math.round((new Date(h.end)-new Date(h.start))/86400000);
+      if(d>0) dur=d+' dia'+(d>1?'s':''); else if(d===0) dur='no mesmo dia';
+    }
+    return `<div class="histrow"><span class="hd"><b>${br(h.start)} → ${h.end? br(h.end):'em andamento'}</b>${dur?`<small>${dur}</small>`:''}</span>
+      <button class="histdel" data-i="${h._i}" aria-label="Excluir registro">✕</button></div>`;
+  }).join('') : '<div class="histempty">Nenhum histórico registrado ainda.</div>';
+}
+histList.addEventListener('click',async e=>{
+  const b=e.target.closest('.histdel'); if(!b) return;
+  if(!await ask('Excluir este registro do histórico?','Excluir')) return;
+  const i=+b.dataset.i;
+  DB.t[cur].hist.splice(i,1);
+  touch(cur); renderHist();
+  toast('Registro excluído');
+});
+histClearAll.addEventListener('click',async ()=>{
+  const t=DB.t[cur];
+  if(!t.hist || !t.hist.length){ toast('Não há histórico para excluir'); return; }
+  if(!await ask('Excluir todo o histórico deste território? O registro atual não é afetado.','Excluir tudo')) return;
+  t.hist=[]; touch(cur); renderHist();
+  toast('Histórico excluído');
+});
 [['fStart','start'],['fEnd','end'],['fName','name'],['fResp','resp'],['fAssign','assign'],['fStop','stop'],['fNotes','notes'],['fRefs','refs']].forEach(([id,k])=>{
   document.getElementById(id).addEventListener('input',e=>{
     DB.t[cur][k]=e.target.value; if(k==='start') DB.t[cur].started=!!e.target.value; touch(cur); if(k==='start') renderStart();
@@ -1234,6 +1315,7 @@ function normT(s){ s=s||{}; return {
   name:s.name||'', resp:s.resp||'', assign:s.assign||'', start:s.start||'', end:s.end||'',
   stop:s.stop||'', notes:s.notes||'', started:!!s.started||!!s.start,
   tipo:s.tipo||'urbano', distrito:s.distrito||'', refs:s.refs||'',
+  hist: Array.isArray(s.hist)? s.hist.filter(h=>h&&h.start).map(h=>({start:h.start,end:h.end||'',ts:h.ts||0})) : [],
   ts:s.ts||0
 };}
 function merge(d){
@@ -1467,6 +1549,34 @@ btnCopyProg.addEventListener('click',async ()=>{
     const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta);
     ta.select(); document.execCommand('copy'); ta.remove(); toast('Programação copiada');
   }
+});
+btnDownloadProg.addEventListener('click', async ()=>{
+  if(!progList.children.length || !progList.querySelector('.day')){ toast('Nada para baixar'); return; }
+  if(!window.html2canvas){ toast('Não foi possível gerar a imagem'); return; }
+  toast('Gerando imagem...');
+  const wrap=document.createElement('div');
+  wrap.id='progShotWrap';
+  const bg=getComputedStyle(document.body).getPropertyValue('--bg').trim()||'#ffffff';
+  wrap.style.background=bg;
+  const head=document.createElement('div'); head.className='shhead';
+  head.innerHTML=`<b>Programação de campo</b><span>${(DB.cfg.congName? DB.cfg.congName+' · ':'')+br(today())}</span>`;
+  wrap.appendChild(head);
+  const clone=progList.cloneNode(true);
+  clone.style.margin='0';
+  wrap.appendChild(clone);
+  wrap.style.position='fixed'; wrap.style.left='-9999px'; wrap.style.top='0'; wrap.style.width=progList.offsetWidth+'px';
+  document.body.appendChild(wrap);
+  try{
+    const canvas = await html2canvas(wrap,{backgroundColor:bg,scale:2});
+    canvas.toBlob(blob=>{
+      if(!blob){ toast('Não foi possível gerar a imagem'); return; }
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download='programacao-'+today()+'.png'; a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+      toast('Imagem baixada');
+    });
+  }catch(e){ toast('Não foi possível gerar a imagem'); }
+  wrap.remove();
 });
 
 /* ---------- sincronização por conta (Firestore) ---------- */
